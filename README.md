@@ -21,3 +21,16 @@ To set up the ProtonX bot locally or deploy it:
 1. Clone the repository:
    ```bash
    git clone https://github.com/Bapibarr/protonx-site.git
+# ProtonX Telegram Bot
+
+Airdrop and Referral system based Telegram Bot with persistent database using SQLite.
+
+## Features
+
+- /start
+- /help
+- /profile (see balance, join date, referrals)
+
+## Deploy
+
+Use Render with a worker and `.env` file to set BOT_TOKEN.
