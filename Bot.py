@@ -1,67 +1,77 @@
 import os
 from telegram.ext import Updater, CommandHandler
+from dotenv import load_dotenv
+from database import add_user, get_user, get_balance
 
-# Bot token (hardcoded for now, but use environment variable in Render)
-TOKEN = "8075686130:AAFiewbewwwrq4SDIXle0aUPZCGxtuA3l7s"
+load_dotenv()
+TOKEN = os.getenv("BOT_TOKEN")
 
-# Command handlers
 def start(update, context):
-    user_id = update.effective_user.id
-    welcome_message = "🎉 Welcome to ProtonX Bot! Start your journey with us. Use /help for commands."
-    context.bot.send_message(chat_id=user_id, text=welcome_message)
+    user = update.effective_user
+    user_id = user.id
+    username = user.username or "NoUsername"
+    args = context.args
+    referred_by = int(args[0]) if args else None
+
+    add_user(user_id, username, referred_by)
+    context.bot.send_message(chat_id=user_id, text="🎉 Welcome to ProtonX Airdrop!\nUse /help to see all commands.")
 
 def help_command(update, context):
-    user_id = update.effective_user.id
-    help_text = "Available commands:\n/start - Start the bot\n/tokenomics - View ProtonX token distribution\n/slogan - Get our slogan\n/links - Get all ProtonX links\n/help - Show this message"
-    context.bot.send_message(chat_id=user_id, text=help_text)
+    update.message.reply_text(
+        "📌 Commands:\n"
+        "/start - Join the bot\n"
+        "/profile - View your details\n"
+        "/balance - Check your balance\n"
+        "/refer - Get your referral link\n"
+        "/help - Show this message"
+    )
 
-def tokenomics(update, context):
+def profile(update, context):
     user_id = update.effective_user.id
-    tokenomics_text = """
-📊 ProtonX Tokenomics:
-• Owner: 15%
-• Airdrop: 15%
-• Liquidity: 45%
-• Development: 15%
-• Game: 10%
-"""
-    context.bot.send_message(chat_id=user_id, text=tokenomics_text)
+    user_data = get_user(user_id)
+    if user_data:
+        _, username, join_date, balance, referred_by, referrals = user_data
+        update.message.reply_text(
+            f"👤 Profile:\n"
+            f"🆔 ID: {user_id}\n"
+            f"📛 Username: @{username}\n"
+            f"🗓️ Joined: {join_date}\n"
+            f"💰 Balance: {balance} PX\n"
+            f"👥 Referrals: {referrals}"
+        )
+    else:
+        update.message.reply_text("❌ You are not registered.")
 
-def slogan(update, context):
+def balance(update, context):
     user_id = update.effective_user.id
-    slogan_text = "🚀 Slogan: Build from Zero — Rise to the Future"
-    context.bot.send_message(chat_id=user_id, text=slogan_text)
+    bal = get_balance(user_id)
+    update.message.reply_text(f"💰 Your balance: {bal} PX")
 
-def links(update, context):
+def refer(update, context):
     user_id = update.effective_user.id
-    links_text = """
-🌐 Website: https://bapibarman147.github.io/protonx-site/
-✈️ Telegram: https://t.me/protonxofficial
-🎥 YouTube: https://www.youtube.com/@ProtonXofficial
-📘 Facebook: https://www.facebook.com/share/1CF1A6qXjw/
-"""
-    context.bot.send_message(chat_id=user_id, text=links_text)
+    update.message.reply_text(
+        f"🔗 Share your referral link:\n"
+        f"https://t.me/Protonxairdrop_bot?start={user_id}"
+    )
 
-# Bot setup
 def main():
     updater = Updater(token=TOKEN, use_context=True)
     dp = updater.dispatcher
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help_command))
-    dp.add_handler(CommandHandler("tokenomics", tokenomics))
-    dp.add_handler(CommandHandler("slogan", slogan))
-    dp.add_handler(CommandHandler("links", links))
 
-    # Webhook setup for 24/7 operation on Render
-    port = int(os.getenv('PORT', 10000))
+    dp.add_handler(CommandHandler("start", start, pass_args=True))
+    dp.add_handler(CommandHandler("help", help_command))
+    dp.add_handler(CommandHandler("profile", profile))
+    dp.add_handler(CommandHandler("balance", balance))
+    dp.add_handler(CommandHandler("refer", refer))
+
+    port = int(os.environ.get("PORT", "8443"))
     updater.start_webhook(
-        listen='0.0.0.0',
+        listen="0.0.0.0",
         port=port,
         url_path=TOKEN,
-        webhook_url=f'https://protonx-bot.onrender.com/{TOKEN}'
+        webhook_url=f"https://protonx-bot.onrender.com/{TOKEN}"
     )
-    print(f"Webhook set to https://protonx-bot.onrender.com/{TOKEN}")
     updater.idle()
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
