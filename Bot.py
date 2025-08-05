@@ -1,34 +1,36 @@
-import os
+import logging
+from telegram.ext import ApplicationBuilder, CommandHandler
+from handlers import start, help_command, profile
 from dotenv import load_dotenv
-from telegram.ext import Updater, CommandHandler
-from handlers import *
+import os
+import sqlite3
 
 load_dotenv()
-TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
-def main():
-    updater = Updater(token=TOKEN, use_context=True)
-    dp = updater.dispatcher
+# Database initialize
+conn = sqlite3.connect("database.db")
+c = conn.cursor()
+c.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    username TEXT,
+    balance INTEGER DEFAULT 0,
+    referrals INTEGER DEFAULT 0,
+    join_date TEXT
+)
+""")
+conn.commit()
+conn.close()
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("help", help_command))
-    dp.add_handler(CommandHandler("profile", profile))
-    dp.add_handler(CommandHandler("balance", balance))
-    dp.add_handler(CommandHandler("refer", refer))
-    dp.add_handler(CommandHandler("setwallet", setwallet))
-    dp.add_handler(CommandHandler("dailybonus", dailybonus))
-    dp.add_handler(CommandHandler("withdraw", withdraw))
+# Logging
+logging.basicConfig(level=logging.INFO)
 
-    PORT = int(os.environ.get('PORT', 8443))
-    updater.start_webhook(
-        listen="0.0.0.0",
-        port=PORT,
-        url_path=TOKEN,
-        webhook_url=f"https://protonx-bot.onrender.com/{TOKEN}"
-    )
+# Bot setup
+app = ApplicationBuilder().token(BOT_TOKEN).build()
 
-    print("🚀 Bot running...")
-    updater.idle()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(CommandHandler("help", help_command))
+app.add_handler(CommandHandler("profile", profile))
 
-if __name__ == "__main__":
-    main()
+app.run_polling()
