@@ -1,77 +1,32 @@
 from telegram import Update
-from telegram.ext import CallbackContext
-from datetime import datetime, timedelta
-from database import *
+from telegram.ext import ContextTypes
+from db import add_user, get_user
 
-def start(update: Update, context: CallbackContext):
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    ref_by = None
+    if context.args:
+        try:
+            ref_by = int(context.args[0])
+        except:
+            pass
     user = update.effective_user
-    ref = context.args[0] if context.args else None
-    ref_id = int(ref) if ref and ref.isdigit() else None
+    add_user(user.id, ref_by)
+    await update.message.reply_text(f"👋 হ্যালো {user.first_name}, ProtonX-এ তোমাকে স্বাগতম!")
 
-    add_user(user.id, ref_id)
-    context.bot.send_message(chat_id=user.id,
-        text="🎉 Welcome to ProtonX Bot!\nUse /help to explore commands.")
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("🆘 সাহায্য:\n/start - শুরু করুন\n/profile - আপনার প্রোফাইল দেখুন")
 
-def help_command(update: Update, context: CallbackContext):
-    update.message.reply_text("""
-📜 Commands:
-• /profile - View profile
-• /balance - Check balance
-• /refer - Get your referral link
-• /setwallet [address] - Set wallet
-• /dailybonus - Claim daily bonus
-• /withdraw - Request withdrawal
-""")
-
-def profile(update: Update, context: CallbackContext):
+async def profile(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user = get_user(update.effective_user.id)
     if user:
-        _, join_date, balance, referrals, wallet, ref_by, _ = user
-        update.message.reply_text(f"""
-👤 Profile:
-📅 Joined: {join_date}
-💰 Balance: {balance} PX
-👥 Referrals: {referrals}
-🏦 Wallet: {wallet or "Not set"}
-""")
-
-def balance(update: Update, context: CallbackContext):
-    user = get_user(update.effective_user.id)
-    update.message.reply_text(f"💰 Your balance: {user[2]} PX")
-
-def refer(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    update.message.reply_text(f"🔗 Your referral link:\nhttps://t.me/Protonxairdrop_bot?start={user_id}")
-
-def setwallet(update: Update, context: CallbackContext):
-    if context.args:
-        wallet = context.args[0]
-        set_wallet(update.effective_user.id, wallet)
-        update.message.reply_text("✅ Wallet set successfully!")
+        msg = f"""👤 আপনার প্রোফাইল:
+🆔 ID: {user[0]}
+📅 যোগদানের তারিখ: {user[1]}
+💰 ব্যালেন্স: {user[2]} ৳
+👥 রেফারেল: {user[3]}
+📥 রেফার্ড বাই: {user[5]}
+💼 Wallet: {user[4] or 'Not set'}
+"""
+        await update.message.reply_text(msg)
     else:
-        update.message.reply_text("❌ Usage: /setwallet [your_wallet_address]")
-
-def dailybonus(update: Update, context: CallbackContext):
-    user_id = update.effective_user.id
-    user = get_user(user_id)
-    now = datetime.utcnow()
-    last_claim = datetime.strptime(user[6], "%Y-%m-%d %H:%M:%S")
-
-    if now - last_claim >= timedelta(days=1):
-        update_balance(user_id, 10)
-        update_last_bonus(user_id, now.strftime("%Y-%m-%d %H:%M:%S"))
-        update.message.reply_text("🎁 You received 10 PX daily bonus!")
-    else:
-        wait_time = (last_claim + timedelta(days=1)) - now
-        hours = int(wait_time.total_seconds() // 3600)
-        minutes = int((wait_time.total_seconds() % 3600) // 60)
-        update.message.reply_text(f"⏳ Come back in {hours}h {minutes}m for next bonus.")
-
-def withdraw(update: Update, context: CallbackContext):
-    user = get_user(update.effective_user.id)
-    if not user[4]:
-        update.message.reply_text("❌ Please set your wallet using /setwallet first.")
-    elif user[2] < 100:
-        update.message.reply_text("🚫 Minimum 100 PX required to withdraw.")
-    else:
-        update.message.reply_text("✅ Withdrawal request received! Team will process it soon.")
+        await update.message.reply_text("প্রোফাইল পাওয়া যায়নি। /start দিন।")
