@@ -1,7 +1,7 @@
 from telegram import Update
 from telegram.ext import CallbackContext
 from datetime import datetime, timedelta
-from db import *
+from database import *
 
 def start(update: Update, context: CallbackContext):
     user = update.effective_user
